@@ -1,12 +1,12 @@
-// Funciones para imprimir estado y claves para depuración.
+// ============================================================
+// debug_utils.s - VERSIÓN COLUMN-MAJOR COMPLETA
+// ============================================================
 
 .include "macros.s"
 .include "data.s"
-// .include "bss.s"
 
 .section .text
 
-// Necesita llamar a funciones de otros modulos
 .extern addRoundKey
 .extern subBytes
 .extern shiftRows
@@ -17,7 +17,10 @@
 .extern criptograma
 .extern buffer
 
-// Funcion para imprimir byte en hexadecimal (no global, auxiliar)
+// ============================================================
+// FUNCIÓN PARA IMPRIMIR BYTE EN HEXADECIMAL
+// ============================================================
+.type print_hex_byte, %function
 print_hex_byte:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
@@ -61,18 +64,21 @@ low_done:
     add sp, sp, #16
     ldp x29, x30, [sp], #16
     ret
+.size print_hex_byte, (. - print_hex_byte)
 
-// Función para imprimir matriz
+
+// ============================================================
+// FUNCIÓN PARA IMPRIMIR MATRIZ - COLUMN-MAJOR
+// ============================================================
 .type printMatrix, %function
 .global printMatrix
 printMatrix:
     stp x29, x30, [sp, #-48]!
     mov x29, sp
     
-    // Guardar parametros
-    str x0, [sp, #16] 
-    str x1, [sp, #24] 
-    str x2, [sp, #32] 
+    str x0, [sp, #16]
+    str x1, [sp, #24]
+    str x2, [sp, #32]
     
     // Imprimir mensaje
     mov x0, #1
@@ -81,26 +87,23 @@ printMatrix:
     mov x8, #64
     svc #0
     
-    // Imprimir matriz 4x4
-    mov x23, #0 
+    mov x23, #0             // Contador de filas
     
 print_row_loop:
     cmp x23, #4
     b.ge print_matrix_done
     
-    mov x24, #0 
+    mov x24, #0             // Contador de columnas
     
 print_col_loop:
     cmp x24, #4
     b.ge print_row_newline
     
-    // Calcular índice column-major: fila*4 + columna
-    mov x25, #4
-    mul x25, x23, x25
-    add x25, x25, x24
+    // COLUMN-MAJOR: offset = columna * 4 + fila
+    lsl x25, x24, #2        // x25 = columna * 4
+    add x25, x25, x23       // x25 = columna * 4 + fila
     
-    // Cargar y mostrar byte
-    ldr x20, [sp, #16] 
+    ldr x20, [sp, #16]
     ldrb w0, [x20, x25]
     bl print_hex_byte
     
@@ -116,26 +119,27 @@ print_matrix_done:
     print 1, newline, 1
     ldp x29, x30, [sp], #48
     ret
-    .size printMatrix, (. - printMatrix)
+.size printMatrix, (. - printMatrix)
 
-// Función de prueba para AddRoundKey
+
+// ============================================================
+// FUNCIONES DE PRUEBA
+// ============================================================
+
 .type testAddRoundKey, %function
 .global testAddRoundKey
 testAddRoundKey:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
     
-    // Mensaje antes de AddRoundKey
     print 1, msg_before_addroundkey, lenMsgBeforeAdd
     ldr x0, =matState
     ldr x1, =debug_state
     mov x2, lenDebugState
     bl printMatrix
     
-    // Aplicar AddRoundKey
     bl addRoundKey
     
-    // Mensaje después de AddRoundKey
     print 1, msg_after_addroundkey, lenMsgAfterAdd
     ldr x0, =matState
     ldr x1, =debug_state
@@ -144,26 +148,23 @@ testAddRoundKey:
     
     ldp x29, x30, [sp], #16
     ret
-    .size testAddRoundKey, (. - testAddRoundKey)
+.size testAddRoundKey, (. - testAddRoundKey)
 
-// Muestra el estado antes y después de la transformación
+
 .type testSubBytes, %function
 .global testSubBytes
 testSubBytes:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
     
-    // Mensaje antes de SubBytes
     print 1, msg_before_subbytes, lenMsgBeforeSub
     ldr x0, =matState
     ldr x1, =debug_state
     mov x2, lenDebugState
     bl printMatrix
     
-    // Aplicar SubBytes
     bl subBytes
     
-    // Mensaje despues de SubBytes
     print 1, msg_after_subbytes, lenMsgAfterSub
     ldr x0, =matState
     ldr x1, =debug_state
@@ -172,27 +173,23 @@ testSubBytes:
     
     ldp x29, x30, [sp], #16
     ret
-    .size testSubBytes, (. - testSubBytes)
-    
+.size testSubBytes, (. - testSubBytes)
 
-    .type testShiftRows, %function
+
+.type testShiftRows, %function
 .global testShiftRows
 testShiftRows:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
 
-
-    // Mensaje antes de ShiftRows
     print 1, msg_before_shiftrows, lenMsgBeforeShift
     ldr x0, =matState
     ldr x1, =debug_state
     mov x2, lenDebugState
     bl printMatrix
 
-    // Aplicar ShiftRows
     bl shiftRows
 
-    // Mensaje después de ShiftRows e impresión
     print 1, msg_after_shiftrows, lenMsgAfterShift
     ldr x0, =matState
     ldr x1, =debug_state
@@ -204,7 +201,6 @@ testShiftRows:
 .size testShiftRows, (. - testShiftRows)
 
 
-// Función de prueba para MixColumns
 .type testMixColumns, %function
 .global testMixColumns
 testMixColumns:
@@ -217,10 +213,8 @@ testMixColumns:
     mov x2, lenDebugState
     bl printMatrix
     
-    // Aplicar MixColumns
     bl mixColumns
     
-    // Mensaje después de MixColumns
     print 1, msg_after_mixcolumns, lenMsgAfterMix
     ldr x0, =matState
     ldr x1, =debug_state

@@ -180,13 +180,14 @@ def mix_columns(matrix: list[list[str]]) -> list[list[str]]:
 #--- Texto del texto de prueba ABC0123456789ABC ---
 # STATE_HEX = "41424330313233343536373839414243"
 #--- Texto de prueba en pagina https://www.teoria.com/jra/aes/encrypt.html ---
-STATE_HEX = "4d656e73616a65207365637265746f2e"
+#STATE_HEX = "4d656e73616a65207365637265746f2e"
 
+STATE_HEX = "54776f204f6e65204e696e652054776f"
 #--- Llave usada en pruebas ---
 # KEY_HEX = "C17DA4216A8FB10E77FF853C2B61EE94" 
 #--- Llave usada en pagina https://www.teoria.com/jra/aes/encrypt.html ---
-KEY_HEX = "2B7E151628AED2A6ABF7158809CF4F3C"
-
+#KEY_HEX = "2B7E151628AED2A6ABF7158809CF4F3C"
+KEY_HEX = "5468617473206D79204B756E67204675"
 
 try:
     print(f"Estado (Input): {STATE_HEX}")

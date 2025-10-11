@@ -92,10 +92,88 @@ subbytes_done:
     ldp x29, x30, [sp], #32
     ret
     .size subBytes, (. - subBytes)
+
+
+// ============================================================
+// SHIFTROWS - FORMATO COLUMN-MAJOR CORREGIDO
+// ============================================================
+/*
+ * En column-major, las filas NO están contiguas en memoria.
+ * Fila i está en posiciones: i, i+4, i+8, i+12
+ */
+.type shiftRows, %function
+.global shiftRows
+shiftRows:
+    stp x29, x30, [sp, #-32]!
+    mov x29, sp
+    str x19, [sp, #16]
     
+    ldr x19, =matState
+    
+    // ============================================
+    // Fila 0: No se rota (permanece igual)
+    // ============================================
+    
+    // ============================================
+    // Fila 1: Rotar 1 posición a la izquierda
+    // Posiciones: 1, 5, 9, 13
+    // Resultado: [5, 9, 13, 1]
+    // ============================================
+    ldrb w1, [x19, #1]          // Guardar [1,0] temporal
+    
+    ldrb w2, [x19, #5]          // [1,1]
+    strb w2, [x19, #1]          // [1,0] = [1,1]
+    
+    ldrb w2, [x19, #9]          // [1,2]
+    strb w2, [x19, #5]          // [1,1] = [1,2]
+    
+    ldrb w2, [x19, #13]         // [1,3]
+    strb w2, [x19, #9]          // [1,2] = [1,3]
+    
+    strb w1, [x19, #13]         // [1,3] = [1,0] original
+    
+    // ============================================
+    // Fila 2: Rotar 2 posiciones a la izquierda
+    // Posiciones: 2, 6, 10, 14
+    // Resultado: [10, 14, 2, 6]
+    // ============================================
+    ldrb w1, [x19, #2]          // Guardar [2,0]
+    ldrb w2, [x19, #6]          // Guardar [2,1]
+    
+    ldrb w3, [x19, #10]         // [2,2]
+    strb w3, [x19, #2]          // [2,0] = [2,2]
+    
+    ldrb w3, [x19, #14]         // [2,3]
+    strb w3, [x19, #6]          // [2,1] = [2,3]
+    
+    strb w1, [x19, #10]         // [2,2] = [2,0] original
+    strb w2, [x19, #14]         // [2,3] = [2,1] original
+    
+    // ============================================
+    // Fila 3: Rotar 3 posiciones a la izquierda
+    // Posiciones: 3, 7, 11, 15
+    // Resultado: [15, 3, 7, 11]
+    // ============================================
+    ldrb w1, [x19, #15]         // Guardar [3,3] temporal
+    
+    ldrb w2, [x19, #11]         // [3,2]
+    strb w2, [x19, #15]         // [3,3] = [3,2]
+    
+    ldrb w2, [x19, #7]          // [3,1]
+    strb w2, [x19, #11]         // [3,2] = [3,1]
+    
+    ldrb w2, [x19, #3]          // [3,0]
+    strb w2, [x19, #7]          // [3,1] = [3,0]
+    
+    strb w1, [x19, #3]          // [3,0] = [3,3] original
+    
+    ldr x19, [sp, #16]
+    ldp x29, x30, [sp], #32
+    ret
+.size shiftRows, (. - shiftRows) 
 /*
  * IMPLEMENTACIÓN DE SHIFTROWS - OPERACIÓN AES
-*/
+
 .type shiftRows, %function
 .global shiftRows
 shiftRows:
@@ -174,47 +252,47 @@ shiftRows:
  * Entrada: w0 = byte a (multiplicando)
  * Salida: w0 = resultado (a * {02})
  */
+/*
 .type multiply_by_02, %function
 .global multiply_by_02
 multiply_by_02:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
-
-    // w1: Bandera para chequear el bit 7
-    and w1, w0, #0x80           
     
-    // Desplazamiento a la izquierda por 1 (a * 2)
-    lsl w0, w0, #1              
+    // Guardar el bit más significativo
+    and w1, w0, #0x80           // w1 = w0 & 0x80
     
-    // Si el bit 7 era 1 (es decir, w1 != 0), aplicamos la reducción
-    cmp w1, #0
-    b.eq xtime_done             
+    // Shift left (multiplicar por 2)
+    lsl w0, w0, #1              // w0 = w0 << 1
+    and w0, w0, #0xFF           // Asegurar que sea de 8 bits
     
-    // CORRECCIÓN: cargar constante con MOV (no "ldr =imm")
-    mov w2, #0x1B                // w2 = 0x1B
-    eor w0, w0, w2               // w0 = w0 XOR 0x1B
+    // Si bit 7 era 1, hacer XOR con 0x1B
+    cbz w1, multiply_by_02_done // Si w1 == 0, saltar
     
-xtime_done:
-    ldp x29, x30, [sp], #16
+    mov w2, #0x1B               // Cargar 0x1B en registro
+    eor w0, w0, w2              // w0 = w0 XOR 0x1B
+    
+multiply_by_02_done:
+    ldp x29, x30, [sp], #16 
     ret
-.size xtime, (. - xtime)
+.size multiply_by_02, (. - multiply_by_02)
 
 /*
  * Función: multiply_by_03
  * Entrada: w0 = byte a (multiplicando)
  * Salida: w0 = resultado (a * {03})
- */
-.type multiply_by_03, %function
+ 
+ .type multiply_by_03, %function
 .global multiply_by_03
 multiply_by_03:
-    stp x29, x30, [sp, #-16]!
+    stp x29, x30, [sp, #-16]!  
     mov x29, sp
     
-    mov w1, w0                  // w1 = a
+    mov w1, w0                  // Guardar valor original
     
-    bl xtime                    // w0 = a * {02}
+    bl multiply_by_02           // w0 = {02} * a (llama a función)
     
-    eor w0, w0, w1              // w0 = (a * {02}) XOR a. Esto es a * {03}
+    eor w0, w0, w1              // w0 = ({02} * a) XOR a
     
     ldp x29, x30, [sp], #16
     ret
@@ -224,7 +302,7 @@ multiply_by_03:
 /*
  * IMPLEMENTACIÓN DE MIXCOLUMNS - OPERACIÓN AES
  * Multiplica cada columna de la matriz de estado por la matriz fija de MixColumns.
- */
+ 
 .type mixColumns, %function
 .global mixColumns
 mixColumns:
@@ -240,10 +318,8 @@ mixColumns:
     str x20, [x29, #24]
     str x21, [x29, #32]
 
-    // Cargar puntero a matState (puede usarse ldr =label como pseudo-instrucción)
     ldr x19, =matState          // x19 = Puntero a matState (matriz de estado)
 
-    // Reservar buffer temporal dentro del frame: ubicamos el buffer en [x29,#40 .. #55] (16 bytes)
     add x21, x29, #40           // x21 apunta al buffer temporal dentro del frame
 
     mov x20, #0                 // x20 = j (contador de columnas: 0 a 3)
@@ -274,7 +350,7 @@ column_loop:
     // s'[0,j] = {02}*s[0,j] ^ {03}*s[1,j] ^ {01}*s[2,j] ^ {01}*s[3,j]
     // ----------------------------------------------------
     mov w0, w22                 // {02}*s[0,j]
-    bl xtime                    // w0 = {02}*s[0,j]
+    bl multiply_by_02                    // w0 = {02}*s[0,j]
     mov w4, w0
     
     mov w0, w23                 // {03}*s[1,j]
@@ -295,7 +371,7 @@ column_loop:
     mov w4, w22                 // w4 = {01}*s[0,j]
     
     mov w0, w23                 // {02}*s[1,j]
-    bl xtime
+    bl multiply_by_02
     eor w4, w4, w0              // w4 ^= {02}*s[1,j]
     
     mov w0, w24                 // {03}*s[2,j]
@@ -314,7 +390,7 @@ column_loop:
     eor w4, w22, w23            // w4 = {01}*s[0,j] ^ {01}*s[1,j]
     
     mov w0, w24                 // {02}*s[2,j]
-    bl xtime
+    bl multiply_by_02
     eor w4, w4, w0              // w4 ^= {02}*s[2,j]
     
     mov w0, w25                 // {03}*s[3,j]
@@ -337,7 +413,7 @@ column_loop:
     eor w4, w4, w24             // w4 ^= {01}*s[2,j]
     
     mov w0, w25                 // {02}*s[3,j]
-    bl xtime
+    bl multiply_by_02
     eor w4, w4, w0              // w4 ^= {02}*s[3,j]
     
     strb w4, [x21, #3]          // Guardar s'[3,j] en el buffer temporal
@@ -369,5 +445,214 @@ mixColumns_done:
     ldr x20, [x29, #24]
     ldr x19, [x29, #16]
     ldp x29, x30, [sp], #64
+    ret
+.size mixColumns, (. - mixColumns)
+*/
+
+/*
+ * IMPLEMENTACIÓN COMPLETA Y CORREGIDA DE MIXCOLUMNS
+ * Para AES-128 en ARM64
+ */
+
+ /*
+ * MIXCOLUMNS para formato ROW-MAJOR
+ * La matriz está almacenada como: fila*4 + columna
+ */
+
+.type multiply_by_02, %function
+.global multiply_by_02
+multiply_by_02:
+    and w1, w0, #0x80           
+    lsl w0, w0, #1              
+    cbz w1, multiply_by_02_done
+    
+    // Reducción si el bit 7 era 1
+    mov w2, #0x1B               
+    eor w0, w0, w2
+    
+multiply_by_02_done:
+    ret
+.size multiply_by_02, (. - multiply_by_02)
+
+
+.type multiply_by_03, %function
+.global multiply_by_03
+multiply_by_03:
+    stp x29, x30, [sp, #-16]!
+    mov x29, sp
+    mov w1, w0
+    bl multiply_by_02
+    eor w0, w0, w1
+    ldp x29, x30, [sp], #16
+    ret
+.size multiply_by_03, (. - multiply_by_03)
+
+
+// ============================================================
+// MIXCOLUMNS - FORMATO COLUMN-MAJOR
+// ============================================================
+/*
+ * En column-major:
+ * - Columna 0: bytes 0, 1, 2, 3
+ * - Columna 1: bytes 4, 5, 6, 7
+ * - Columna 2: bytes 8, 9, 10, 11
+ * - Columna 3: bytes 12, 13, 14, 15
+ * 
+ * Para acceder a matriz[fila][col]:
+ * offset = col * 4 + fila
+ */
+.type mixColumns, %function
+.global mixColumns
+mixColumns:
+    stp x29, x30, [sp, #-128]!
+    mov x29, sp
+
+    stp x19, x20, [x29, #16]
+    stp x21, x22, [x29, #32]
+    stp x23, x24, [x29, #48]
+    stp x25, x26, [x29, #64]
+
+    ldr x19, =matState
+    mov x20, #0                 // Contador de columnas (0-3)
+
+column_loop:
+    cmp x20, #4
+    b.ge mixColumns_done
+
+    // ============================================
+    // CARGAR COLUMNA j en formato COLUMN-MAJOR
+    // Columna j comienza en offset = j * 4
+    // ============================================
+    lsl x10, x20, #2            // x10 = j * 4 (offset base de la columna)
+    
+    ldrb w22, [x19, x10]        // s0 = matriz[0][j] = offset + 0
+    
+    add x11, x10, #1
+    ldrb w23, [x19, x11]        // s1 = matriz[1][j] = offset + 1
+    
+    add x11, x10, #2
+    ldrb w24, [x19, x11]        // s2 = matriz[2][j] = offset + 2
+    
+    add x11, x10, #3
+    ldrb w25, [x19, x11]        // s3 = matriz[3][j] = offset + 3
+
+    // Guardar valores originales en el stack
+    strb w22, [x29, #80]
+    strb w23, [x29, #81]
+    strb w24, [x29, #82]
+    strb w25, [x29, #83]
+
+    // ============================================
+    // s'[0] = {02}*s0 ^ {03}*s1 ^ s2 ^ s3
+    // ============================================
+    ldrb w22, [x29, #80]
+    mov w0, w22
+    bl multiply_by_02
+    mov w26, w0
+    
+    ldrb w23, [x29, #81]
+    mov w0, w23
+    bl multiply_by_03
+    eor w26, w26, w0
+    
+    ldrb w24, [x29, #82]
+    eor w26, w26, w24
+    
+    ldrb w25, [x29, #83]
+    eor w26, w26, w25
+    
+    strb w26, [x29, #84]
+
+    // ============================================
+    // s'[1] = s0 ^ {02}*s1 ^ {03}*s2 ^ s3
+    // ============================================
+    ldrb w22, [x29, #80]
+    mov w26, w22
+    
+    ldrb w23, [x29, #81]
+    mov w0, w23
+    bl multiply_by_02
+    eor w26, w26, w0
+    
+    ldrb w24, [x29, #82]
+    mov w0, w24
+    bl multiply_by_03
+    eor w26, w26, w0
+    
+    ldrb w25, [x29, #83]
+    eor w26, w26, w25
+    
+    strb w26, [x29, #85]
+
+    // ============================================
+    // s'[2] = s0 ^ s1 ^ {02}*s2 ^ {03}*s3
+    // ============================================
+    ldrb w22, [x29, #80]
+    ldrb w23, [x29, #81]
+    eor w26, w22, w23
+    
+    ldrb w24, [x29, #82]
+    mov w0, w24
+    bl multiply_by_02
+    eor w26, w26, w0
+    
+    ldrb w25, [x29, #83]
+    mov w0, w25
+    bl multiply_by_03
+    eor w26, w26, w0
+    
+    strb w26, [x29, #86]
+
+    // ============================================
+    // s'[3] = {03}*s0 ^ s1 ^ s2 ^ {02}*s3
+    // ============================================
+    ldrb w22, [x29, #80]
+    mov w0, w22
+    bl multiply_by_03
+    mov w26, w0
+    
+    ldrb w23, [x29, #81]
+    eor w26, w26, w23
+    
+    ldrb w24, [x29, #82]
+    eor w26, w26, w24
+    
+    ldrb w25, [x29, #83]
+    mov w0, w25
+    bl multiply_by_02
+    eor w26, w26, w0
+    
+    strb w26, [x29, #87]
+
+    // ============================================
+    // ESCRIBIR resultados de vuelta (COLUMN-MAJOR)
+    // ============================================
+    lsl x10, x20, #2            // Recalcular offset base
+    
+    ldrb w26, [x29, #84]
+    strb w26, [x19, x10]        // matriz[0][j]
+    
+    add x11, x10, #1
+    ldrb w26, [x29, #85]
+    strb w26, [x19, x11]        // matriz[1][j]
+    
+    add x11, x10, #2
+    ldrb w26, [x29, #86]
+    strb w26, [x19, x11]        // matriz[2][j]
+    
+    add x11, x10, #3
+    ldrb w26, [x29, #87]
+    strb w26, [x19, x11]        // matriz[3][j]
+
+    // Siguiente columna
+    add x20, x20, #1
+    b column_loop
+
+mixColumns_done:
+    ldp x25, x26, [x29, #64]
+    ldp x23, x24, [x29, #48]
+    ldp x21, x22, [x29, #32]
+    ldp x19, x20, [x29, #16]
+    ldp x29, x30, [sp], #128
     ret
 .size mixColumns, (. - mixColumns)

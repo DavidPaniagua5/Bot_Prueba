@@ -11,6 +11,7 @@
 .extern testAddRoundKey
 .extern testSubBytes
 .extern testShiftRows
+.extern testMixColumns
 
 .extern matState
 .extern key
