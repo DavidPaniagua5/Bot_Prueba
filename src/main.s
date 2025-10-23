@@ -28,7 +28,6 @@ _start:
     bl readTextInput
     
     // Mostrar estado inicial del texto
-    print 1, debug_state, lenDebugState
     ldr x0, =matState
     ldr x1, =debug_state
     mov x2, lenDebugState
@@ -39,11 +38,9 @@ _start:
     bl convertHexKey
     
     // Mostrar clave
-    print 1, debug_key, lenDebugKey
     ldr x0, =key
     ldr x1, =debug_key
     mov x2, lenDebugKey
-    bl printMatrix
     
     bl keyExpansion
     
