@@ -565,7 +565,10 @@ addround_done:
 printRoundHeader:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
+    mov x25, x0
+    mov x0, x19
     print 1, msg_round, lenMsgRound
+    mov x0, x25
     sub sp, sp, #16
     cmp w0, #10
     b.lt round_single_digit
@@ -589,6 +592,7 @@ round_single_digit:
     svc #0
 round_print_end:
     add sp, sp, #16
+
     print 1, msg_round_end, lenMsgRoundEnd
     ldp x29, x30, [sp], #16
     ret

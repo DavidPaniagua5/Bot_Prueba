@@ -6,6 +6,7 @@
 .section .text
 
 // Incluir funciones de otros modulos
+.extern separator_line
 
 .extern matState
 .extern key
@@ -171,4 +172,30 @@ convert_hex_done:
     ldp x29, x30, [sp], #16
     ret
     .size convertHexKey, (. - convertHexKey)
+
+// Función para imprimir separador
+.type print_separator, %function
+.global print_separator
+print_separator:
+    stp x29, x30, [sp, #-16]!
+    mov x29, sp
     
+    ldr x0, =separator_line
+    mov x1, #0
+separator_count:
+    ldrb w2, [x0, x1]
+    cmp w2, #0
+    beq separator_print
+    add x1, x1, #1
+    b separator_count
+    
+separator_print:
+    mov x2, x1
+    mov x1, x0
+    mov x0, #1
+    mov x8, #64
+    svc #0
+    
+    ldp x29, x30, [sp], #16
+    ret
+.size print_separator, (. - print_separator)

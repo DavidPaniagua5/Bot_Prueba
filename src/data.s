@@ -64,4 +64,7 @@ lenMsgFinal = . - msg_final
 msg_round_start:  .ascii "Ronda "
 lenMsgRoundStart = . - msg_round_start
 
+msg_final_state: .asciz "\n=== MATRIZ FINAL DE ESTADO ===\n"
+    lenMsgFinalState = . - msg_final_state
+
 msg_newline:      .ascii "\n"
