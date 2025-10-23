@@ -1,21 +1,25 @@
+// Funciones de lectura y de entrada de usuario.
+
 .include "macros.s"
 .include "data.s"
 
 .section .text
+
+// Incluir funciones de otros modulos
 
 .extern matState
 .extern key
 .extern criptograma
 .extern buffer
 
-.type is_hex_char, %function
+// Funciones auxiliares (no globales, solo usadas internamente)
 is_hex_char:
     cmp w4, #'0'
     b.lt not_hex
     cmp w4, #'9'
     b.le is_hex
     
-    orr w4, w4, #0x20       // Convertir a minúscula
+    orr w4, w4, #0x20 // Convertir a minuscula
     cmp w4, #'a'
     b.lt not_hex
     cmp w4, #'f'
@@ -27,17 +31,14 @@ not_hex:
 is_hex:
     mov w0, #1
     ret
-.size is_hex_char, (. - is_hex_char)
 
-
-.type hex_char_to_nibble, %function
 hex_char_to_nibble:
     cmp w4, #'0'
     b.lt hex_error
     cmp w4, #'9'
     b.le hex_digit
     
-    orr w4, w4, #0x20       // Convertir a minúscula
+    orr w4, w4, #0x20 // Convertir a minúscula
     cmp w4, #'a'
     b.lt hex_error
     cmp w4, #'f'
@@ -55,8 +56,9 @@ hex_error:
     print 1, key_err_msg, lenKeyErr
     mov w0, #0
     ret
-.size hex_char_to_nibble, (. - hex_char_to_nibble)
 
+
+// Función para leer cadena de texto y convertir a bytes ASCII
 .type readTextInput, %function
 .global readTextInput
 readTextInput:
@@ -66,44 +68,45 @@ readTextInput:
     // Leer entrada del usuario
     read 0, buffer, 256
     
-    ldr x1, =buffer
-    ldr x2, =matState
-    mov x3, #0              // Contador de bytes leídos
+    // Convertir caracteres a bytes ASCII y almacenar en matriz
+    ldr x1, =buffer 
+    ldr x2, =matState 
+    mov x3, #0 
     
 convert_text_loop:
     cmp x3, #16
-    b.ge convert_text_done
+    b.ge pad_remaining_bytes
     
-    ldrb w4, [x1, x3]
-    cmp w4, #10             // Newline
+    ldrb w4, [x1, x3] 
+    cmp w4, #10 
     b.eq pad_remaining_bytes
-    cmp w4, #0              // Null terminator
+    cmp w4, #0 
     b.eq pad_remaining_bytes
     
-    // COLUMN-MAJOR: offset = columna * 4 + fila
-    // donde: columna = index / 4, fila = index % 4
-    
+    // Almacenar caracter como byte ASCII en column-major order
+    // Calcular índice: (index % 4) + (index / 4) * 4
     mov x7, #4
-    udiv x8, x3, x7         // x8 = columna (index / 4)
-    msub x9, x8, x7, x3     // x9 = fila (index % 4)
-    lsl x10, x8, #2         // x10 = columna * 4
-    add x10, x10, x9        // x10 = columna * 4 + fila
+    udiv x8, x3, x7 
+    msub x9, x8, x7, x3 
+    mul x10, x9, x7 
+    add x10, x10, x8 
     
-    strb w4, [x2, x10]
+    strb w4, [x2, x10] 
     add x3, x3, #1
     b convert_text_loop
     
 pad_remaining_bytes:
+    // Rellenar bytes restantes con ceros
     cmp x3, #16
     b.ge convert_text_done
     
     mov x7, #4
-    udiv x8, x3, x7
-    msub x9, x8, x7, x3
-    lsl x10, x8, #2
-    add x10, x10, x9
+    udiv x8, x3, x7 
+    msub x9, x8, x7, x3 
+    mul x10, x9, x7 
+    add x10, x10, x8 
     
-    mov w4, #0
+    mov w4, #0 
     strb w4, [x2, x10]
     add x3, x3, #1
     b pad_remaining_bytes
@@ -114,18 +117,20 @@ convert_text_done:
 .size readTextInput, (. - readTextInput)
 
 
+// Función para convertir clave hexadecimal
 .type convertHexKey, %function
 .global convertHexKey
 convertHexKey:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
 
+    // Leer clave hexadecimal
     read 0, buffer, 33
     
-    ldr x1, =buffer
-    ldr x2, =key
-    mov x3, #0              // Contador de bytes procesados
-    mov x11, #0             // Índice en el buffer
+    ldr x1, =buffer 
+    ldr x2, =key 
+    mov x3, #0 
+    mov x11, #0 
     
 convert_hex_loop:
     cmp x3, #16
@@ -135,9 +140,10 @@ skip_non_hex:
     ldrb w4, [x1, x11]
     cmp w4, #0
     b.eq convert_hex_done
-    cmp w4, #10
+    cmp w4, #10 
     b.eq convert_hex_done
     
+    // Verificar si es carácter hex válido
     bl is_hex_char
     cmp w0, #1
     b.eq process_hex_pair
@@ -146,30 +152,23 @@ skip_non_hex:
     b skip_non_hex
     
 process_hex_pair:
-    // Procesar nibble alto
-    ldrb w4, [x1, x11]
+    // Procesar par de caracteres hex
+    ldrb w4, [x1, x11] 
     add x11, x11, #1
     bl hex_char_to_nibble
     lsl w5, w0, #4
     
-    // Procesar nibble bajo
-    ldrb w4, [x1, x11]
+    ldrb w4, [x1, x11] 
     add x11, x11, #1
     bl hex_char_to_nibble
     orr w5, w5, w0
     
-    // COLUMN-MAJOR: offset = columna * 4 + fila
-    mov x7, #4
-    udiv x8, x3, x7         // columna
-    msub x9, x8, x7, x3     // fila
-    lsl x10, x8, #2         // columna * 4
-    add x10, x10, x9        // + fila
-    
-    strb w5, [x2, x10]
+    strb w5, [x2, x3]
     add x3, x3, #1
     b convert_hex_loop
     
 convert_hex_done:
     ldp x29, x30, [sp], #16
     ret
-.size convertHexKey, (. - convertHexKey)
+    .size convertHexKey, (. - convertHexKey)
+    

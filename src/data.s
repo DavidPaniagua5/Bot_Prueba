@@ -26,7 +26,7 @@ msg_before_subbytes: .asciz "Estado ANTES de SubBytes:\n"
 msg_after_subbytes: .asciz "Estado DESPUÉS de SubBytes:\n"
     lenMsgAfterSub = . - msg_after_subbytes
 
-msg_before_addroundkey: .asciz "Estado ANTES de AddRoundKey (XOR con clave):\n"
+msg_before_addroundkey: .asciz "Estado ANTES de AddRoundKey:\n"
     lenMsgBeforeAdd = . - msg_before_addroundkey
 
 msg_after_addroundkey: .asciz "Estado DESPUÉS de AddRoundKey:\n"
@@ -39,7 +39,29 @@ msg_after_shiftrows: .asciz "Estado DESPUÉS de ShiftRows:\n"
     lenMsgAfterShift = . - msg_after_shiftrows
 
 msg_before_mixcolumns: .asciz "Estado ANTES de MixColumns:\n"
-        lenMsgBeforeMix = . - msg_before_mixcolumns
+    lenMsgBeforeMix = . - msg_before_mixcolumns
 
 msg_after_mixcolumns: .asciz "Estado DESPUÉS de MixColumns:\n"
-        lenMsgAfterMix = . - msg_after_mixcolumns
+    lenMsgAfterMix = . - msg_after_mixcolumns
+
+msg_expanded_keys: .asciz "\n=== SUBCLAVES EXPANDIDAS ===\n"
+    lenMsgExpKeys = . - msg_expanded_keys
+
+msg_round_key: .asciz "\nSubclave Ronda "
+    lenMsgRoundKey = . - msg_round_key
+    
+msg_colon: .asciz ":\n"
+
+msg_round: .asciz "\n=== RONDA "
+    lenMsgRound = . - msg_round
+
+msg_round_end: .asciz " ===\n"
+    lenMsgRoundEnd = . - msg_round_end
+
+msg_final:      .ascii "Criptograma final (16 bytes):\n\0"
+lenMsgFinal = . - msg_final
+
+msg_round_start:  .ascii "Ronda "
+lenMsgRoundStart = . - msg_round_start
+
+msg_newline:      .ascii "\n"

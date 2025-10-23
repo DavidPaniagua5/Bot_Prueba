@@ -1,6 +1,5 @@
 .include "macros.s"
 .include "data.s"
-// .include "bss.s"
 
 .section .text
 
@@ -8,10 +7,13 @@
 .extern readTextInput
 .extern convertHexKey
 .extern printMatrix
+
 .extern testAddRoundKey
 .extern testSubBytes
 .extern testShiftRows
 .extern testMixColumns
+.extern addRoundKeyWithRound
+
 
 .extern matState
 .extern key
@@ -25,6 +27,7 @@ _start:
     print 1, msg_txt, lenMsgTxt
     bl readTextInput
     
+
     // Mostrar estado inicial del texto
     print 1, debug_state, lenDebugState
     ldr x0, =matState
@@ -43,22 +46,43 @@ _start:
     mov x2, lenDebugKey
     bl printMatrix
     
+    bl keyExpansion
+
+    bl printExpandedKeys
+    
+    mov w0, #0
     // PASO 1: AddRoundKey (XOR inicial)
     bl testAddRoundKey
-    
-    // PASO 2: SubBytes (sustitución)
+        
+    //PASO 2: SubBytes (sustitución)
     bl testSubBytes
     
-    // PASO 3: ShiftRows (rotar filas a la izquierda)
+    //PASO 3: ShiftRows (rotar filas a la izquierda)
     bl testShiftRows
 
     // PASO 4: MixColumns (Aplicar campo de Galois)
     bl testMixColumns
+
+    mov w0, #1
+    // PASO 5: Roundkey (Nueva clave)
+
+    print 1, msg_before_addroundkey, lenMsgBeforeAdd
+    ldr x0, =matState
+    ldr x1, =debug_state
+    mov x2, lenDebugState
+    bl printMatrix
+    mov w0, #1
+    bl addRoundKeyWithRound
+    print 1, msg_after_addroundkey, lenMsgAfterAdd
+    ldr x0, =matState
+    ldr x1, =debug_state
+    mov x2, lenDebugState
+    bl printMatrix
 
     // Salir del programa
     mov x0, #0
     mov x8, #93
     svc #0
     
-    .size _start, (. - _start)
+.size _start, (. - _start)
     
